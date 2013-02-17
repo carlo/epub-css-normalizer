@@ -33,24 +33,36 @@ Dir.glob("#{folder}/**/*.html").each do |path|
   file.close
 
   # Iterate over all applicable <link> tags and get their stylesheet
-  # references
-  doc.css("link[href$='css']").each do |node|
-    href = node.attr(:href)
-    next if !href || href.empty?
+  # references.
+  doc.css("link[href$='css'], style").each do |node|
+    # Read inline <style> tags.
+    if node.description.name == "style"
+      stylesheets << node.text unless stylesheets.index(node.text)
 
-    href.strip!
-    href.prepend("../") unless href.start_with?("./")
-    full_path = File.expand_path("#{path}/#{href}")
+    elsif node.description.name == "link"
+      href = node.attr(:href)
+      next if !href || href.empty?
 
-    stylesheets << full_path unless stylesheets.index(full_path)
+      href.strip!
+      href.prepend("../") unless href.start_with?("./")
+      full_path = "ss!" + File.expand_path("#{path}/#{href}")
+
+      stylesheets << full_path unless stylesheets.index(full_path)
+    end
+  end
+end
+
+# Exchange references with actual CSS.
+stylesheets.map! do |string|
+  if string.start_with?("ss!")
+    File.read(string.gsub(/^ss!/, ""))
+  else
+    string
   end
 end
 
 # Concatenate all CSS files.
-stylesheets.each do |path|
-  css_original << File.read(path)
-  css_original << "\n"
-end
+css_original = stylesheets.join("\n")
 
 # Parse CSS.
 css_rules = {}
@@ -64,16 +76,17 @@ Sass::Engine.new(css_original, :syntax => :scss).to_tree.to_a.each do |prop|
   end
 end
 
+# Assemble final list of properties.
 final_properties = {}
 selectors_to_check_for = [ "html", "body" ] + opts[:selector].split(/\s+/)
 selectors_to_check_for.uniq!
 
+# Find applicable rules for passed selector.
 selectors_to_check_for.each do |passed_selector|
   matched_rules = css_rules.find do |selector, props|
     pattern = selector.start_with?(".") \
       ? "^\\b*[a-z]+\\#{selector}$" \
       : "^\\b*#{selector}$"
-    # puts [ selector, passed_selector, pattern ].inspect
     selector == passed_selector || passed_selector.match(pattern)
   end
   next unless matched_rules
