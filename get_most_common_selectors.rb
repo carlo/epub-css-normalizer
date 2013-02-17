@@ -1,5 +1,7 @@
 #!/usr/bin/env ruby
 
+require "rubygems"
+require "bundler/setup"
 require "nokogiri"
 require "trollop"
 
@@ -33,7 +35,10 @@ Dir.glob("#{folder}/**/*.html").each do |path|
 
     while parent_node = current_node.parent
       break if parent_node == doc.root
-      selector_tree << "#{parent_node.description.name}.#{ parent_node.attr(:class) }"
+
+      if parent_node.attr(:class)
+        selector_tree << "#{parent_node.description.name}.#{ parent_node.attr(:class) }"
+      end
       current_node = parent_node
     end
 

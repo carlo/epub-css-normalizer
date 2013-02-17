@@ -1,9 +1,12 @@
 #!/usr/bin/env ruby
 
-require "csspool"
+require "rubygems"
+require "bundler/setup"
 require "nokogiri"
 require "pp"
 require "trollop"
+require "sass"
+require "./sass_css3_extension"
 
 opts = Trollop::options do
   banner <<-EOTEXT
@@ -49,33 +52,40 @@ stylesheets.each do |path|
   css_original << "\n"
 end
 
-# Strip `@page` directive, CSSPool doesn't like it.
-css_original.gsub!(/@[a-z]+\s*[^\}]+\}/, "")
-doc = CSSPool::CSS(css_original)
+# Parse CSS.
+css_rules = {}
+Sass::Engine.new(css_original, :syntax => :scss).to_tree.to_a.each do |prop|
+  next unless prop[:selector]
+
+  split_selectors = prop[:selector].split(/\s*,\s*/)
+  split_selectors.each do |ss|
+    css_rules[ss] ||= {}
+    css_rules[ss][ prop[:property] ] = prop[:value]
+  end
+end
 
 final_properties = {}
-opts[:selector].split(/\s+/).each do |passed_selector|
-  begin
-    rule = doc.rule_sets.select do |set|
-      set.selectors.any? do |sel|
-        sel_s = sel.to_s
-        pattern = sel_s.start_with?(".") ? "^\\b*[a-z]+\\#{sel_s}$" : "^\\b*[a-z]+#{sel_s}$"
-        sel_s == passed_selector || passed_selector.match(pattern)
-      end
-    end.first
-  rescue
-    rule = nil
+selectors_to_check_for = [ "html", "body" ] + opts[:selector].split(/\s+/)
+selectors_to_check_for.uniq!
+
+selectors_to_check_for.each do |passed_selector|
+  matched_rules = css_rules.find do |selector, props|
+    pattern = selector.start_with?(".") \
+      ? "^\\b*[a-z]+\\#{selector}$" \
+      : "^\\b*#{selector}$"
+    # puts [ selector, passed_selector, pattern ].inspect
+    selector == passed_selector || passed_selector.match(pattern)
   end
+  next unless matched_rules
 
-  next unless rule
-
-  rule.declarations.each do |decl|
-    final_properties[decl.property.downcase] = decl.expressions.join(" ")
+  rules = Hash[*matched_rules]
+  rules.each do |selector, props|
+    final_properties.merge!(props)
   end
 end
 
 # Return the font size used for the most common selector
-puts final_properties["font-size"]
+puts final_properties["font-size"] || "1em (default)"
 
 if opts[:verbose]
   puts
