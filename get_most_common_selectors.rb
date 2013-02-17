@@ -18,27 +18,30 @@ folder = File.expand_path(opts[:folder])
 css_classes_occurence = {}
 css_classes_weighed = {}
 
-# Iterate over all HTML files in the folder
-Dir.glob("#{folder}/**/*.html").each do |path|
+# Iterate over all (X)HTML files in the folder
+Dir.glob("#{folder}/**/*.*html").each do |path|
   file = File.open(path, "r") rescue nil
   next unless file
 
   doc = Nokogiri::HTML(file)
   file.close
 
+  # Count all tag names & classes.
   doc.css("body *").each do |node|
-    css_class = node.attr(:class)
-    next if !css_class || css_class.empty?
+    next unless node.description
+    descriptor = node.description.name
+    descriptor += "." + node.attr(:class) if node.attr(:class)
 
     current_node = node
-    selector_tree = [ "#{node.description.name}.#{css_class}" ]
+    selector_tree = [ descriptor ]
 
     while parent_node = current_node.parent
       break if parent_node == doc.root
 
-      if parent_node.attr(:class)
-        selector_tree << "#{parent_node.description.name}.#{ parent_node.attr(:class) }"
-      end
+      descriptor = parent_node.description.name
+      descriptor += "." + parent_node.attr(:class) if parent_node.attr(:class)
+      selector_tree << descriptor
+
       current_node = parent_node
     end
 
