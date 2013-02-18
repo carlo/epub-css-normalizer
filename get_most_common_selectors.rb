@@ -19,7 +19,7 @@ css_classes_occurence = {}
 css_classes_weighed = {}
 
 # Iterate over all (X)HTML files in the folder
-Dir.glob("#{folder}/**/*.*html").each do |path|
+Dir.glob("#{folder}/**/*.{htm,html,xhtml}").each do |path|
   file = File.open(path, "r") rescue nil
   next unless file
 

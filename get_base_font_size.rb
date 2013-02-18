@@ -25,7 +25,7 @@ stylesheets = []
 css_original = ""
 
 # Iterate over all HTML files in the folder
-Dir.glob("#{folder}/**/*.html").each do |path|
+Dir.glob("#{folder}/**/*.{htm,html,xhtml}").each do |path|
   file = File.open(path, "r") rescue nil
   next unless file
 
