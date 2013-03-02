@@ -112,7 +112,7 @@ css_properties.each do |prop|
 
   if property == "font-size"
     old_size = sizes_are_numeric ? value.to_f : value
-    relative_index = font_sizes_used.index(old_size) - index_of_old_base_size
+    relative_index = font_sizes_used.index(old_size).to_i - index_of_old_base_size
     new_size = TRADITIONAL_FONT_SIZES[ index_of_new_base_size + relative_index ]
 
     css_rules[sel] ||= {}
