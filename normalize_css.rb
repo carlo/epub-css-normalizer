@@ -47,7 +47,7 @@ documents.each do |path|
 
     elsif node.description.name == "link"
       href = node.attr(:href)
-      next if !href || href.empty?
+      next if !href || href.empty? || href.match("normalized_font_sizes")
 
       href.strip!
       href.prepend("../") unless href.start_with?("./")
@@ -100,6 +100,7 @@ end
 font_sizes_used.uniq!
 index_of_old_base_size = font_sizes_used.index(base_size)
 index_of_new_base_size = TRADITIONAL_FONT_SIZES.index(1)
+factor = 1 / base_size
 
 # Parse & normalize CSS.
 css_rules = {}
@@ -111,13 +112,35 @@ css_properties.each do |prop|
   value = prop[:value]
 
   if property == "font-size"
-    old_size = sizes_are_numeric ? value.to_f : value
-    relative_index = font_sizes_used.index(old_size).to_i - index_of_old_base_size
-    new_size = TRADITIONAL_FONT_SIZES[ index_of_new_base_size + relative_index ]
+    unit = "em"
+
+    if sizes_are_numeric
+      if value.match("%")
+        old_size = value.to_f
+        new_size = ( old_size * factor / 100 ).round(2)
+      elsif value.match(/px/)
+        old_size = value.to_f
+        new_size = ( old_size * factor / 16 ).round(2)
+      elsif value.match(/small/)
+        new_size = "75"
+        unit = "%"
+      elsif value.match(/large/)
+        new_size = "125"
+        unit = "%"
+      else
+        old_size = value.to_f
+        new_size = ( old_size * factor ).round(2)
+      end
+
+      puts "#{value} * #{factor.round(3)} ➔ #{new_size}#{unit}"
+    else
+      relative_index = font_sizes_used.index(value).to_i - index_of_old_base_size
+      new_size = TRADITIONAL_FONT_SIZES[ index_of_new_base_size + relative_index ]
+    end
 
     css_rules[sel] ||= {}
     css_rules[sel]["-cz-old-font-size"] = value
-    css_rules[sel]["font-size"] = "#{new_size}em"
+    css_rules[sel]["font-size"] = "#{new_size}#{unit}"
   elsif property == "line-height"
     css_rules[sel] ||= {}
     css_rules[sel]["line-height"] = "auto"
@@ -142,8 +165,10 @@ puts "Created #{output_filename}."
 documents.each do |path|
   file = File.open(path, "r") rescue nil
   next unless file
+
   doc = Nokogiri::XML(file)
   file.close
+  next unless doc.css("link[href='normalized_font_sizes.css']").empty?
 
   link_node = Nokogiri::XML::Node.new "link", doc
   link_node["rel"] = "stylesheet"
@@ -167,6 +192,7 @@ Dir.glob("#{folder}/**/*.opf") do |path|
 
   doc = Nokogiri::XML(file)
   file.close
+  next unless doc.css("item[href='normalized_font_sizes.css']").empty?
 
   item_node = Nokogiri::XML::Node.new "item", doc
   item_node["id"] = "css-normalized"

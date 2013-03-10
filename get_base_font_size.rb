@@ -42,7 +42,7 @@ Dir.glob("#{folder}/**/*.{htm,html,xhtml,xml}").each do |path|
 
     elsif node.description.name == "link"
       href = node.attr(:href)
-      next if !href || href.empty?
+      next if !href || href.empty? || href.match("normalized_font_sizes")
 
       href.strip!
       href.prepend("../") unless href.start_with?("./")
