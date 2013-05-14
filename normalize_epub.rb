@@ -362,7 +362,7 @@ begin
   unzip_file(opts[:epub], tmp_dir)
   most_common_selector = compute_most_common_selectors(tmp_dir)
   base_font_size = get_base_font_size(tmp_dir, most_common_selector)
-  zip_folder(tmp_dir, opts[:epub] + ".normalized.epub")
+  zip_folder(tmp_dir, opts[:epub].gsub(/\.epub$/, ".normalized.epub"))
 ensure
   # remove the tmp directory.
   FileUtils.remove_entry_secure(tmp_dir)
