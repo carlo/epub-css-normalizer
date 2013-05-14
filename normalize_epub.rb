@@ -9,18 +9,24 @@ require "trollop"
 require "sass"
 require "./sass_css3_extension"
 require "tmpdir"
+require "shellwords"
 
 
 def unzip_file(epub_filename, output_folder)
-  system("unzip '#{epub_filename}' -d '#{output_folder}'");
+  cmd = "unzip #{Shellwords.escape(epub_filename)} -d #{Shellwords.escape(output_folder)}"
+  puts cmd
+  system(cmd)
 end
 
 
 def zip_folder(input_folder, filename)
+  filename_esc = Shellwords.escape(filename)
+  folder_esc = Shellwords.escape(input_folder)
+
   cmd = [
-    "cd '#{input_folder}'",
-    File.exist?("mimetype") ? "zip -X0 -b '#{input_folder}' '#{filename}' mimetype" : nil,
-    "zip -rDX9 '#{filename}' * -x '*.DS_Store' -x mimetype"
+    "cd #{folder_esc}",
+    File.exist?("mimetype") ? "zip -X0 -b #{folder_esc} #{filename_esc} mimetype" : nil,
+    "zip -rDX9 #{filename_esc} * -x *.DS_Store -x mimetype"
   ].compact.join(" && ")
   puts cmd
   system(cmd);
